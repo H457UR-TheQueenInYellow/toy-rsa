@@ -35,14 +35,13 @@ pub fn primegen() -> u64 {
     let mut rng = rand::thread_rng();
     let base: u64 = 2;
     let mut num: u64 = 4;
-    
+
     while !primality(num) {
         num = rng.gen_range(base.pow(30), base.pow(31));
     }
 
     num
 }
-
 
 ///This is the rust implementation of the C# code found at https://en.wikipedia.org/wiki/Primality_test
 pub fn primality(num: u64) -> bool {
@@ -55,10 +54,10 @@ pub fn primality(num: u64) -> bool {
     let mut i: u64 = 5;
 
     while i.pow(2) <= num {
-        if num % i == 0 || num % (i+2) == 0 {
+        if num % i == 0 || num % (i + 2) == 0 {
             return false;
         }
-        i +=6;
+        i += 6;
     }
     true
 }
@@ -67,7 +66,7 @@ pub fn primality(num: u64) -> bool {
 pub fn gcd(x: u64, mut y: u64) -> u64 {
     while y != 0 {
         if y < x {
-            return gcd(y,x);
+            return gcd(y, x);
         }
         y %= x;
     }
@@ -76,7 +75,20 @@ pub fn gcd(x: u64, mut y: u64) -> u64 {
 
 ///Finds least common multiple of the given x and y; utilizes gcd function
 pub fn lcm(x: u64, y: u64) -> u64 {
-    (x*y) / gcd(x,y)
+    (x * y) / gcd(x, y)
+}
+
+///This function finds the modular inverse, if one exists, of two input u64s; presented to you through the power of ~~deep mathematical understanding~~ borrowing code from the C# section of www.geeksforgeeks.org/multiplicative-inverse-under-modulo-m/
+pub fn modinv(a: u64, m: u64) -> u64 {
+    let mut x: u64 = 1;
+
+    while x < m {
+        if ((a % m) * (x % m)) % m == 1 {
+            return x;
+        }
+        x += 1;
+    }
+    1
 }
 
 ///Series of tests that check the modexp function

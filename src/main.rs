@@ -1,5 +1,9 @@
 use toyrsa::*;
 
 fn main() {
-    println!("Here is a prime! It is: {}", primegen());
+
+    let encrypted: u64 = encrypt(12345);
+
+    println!("Your encrypted message is: {}", encrypted);
+
 }

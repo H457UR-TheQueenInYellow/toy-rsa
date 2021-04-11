@@ -91,6 +91,26 @@ pub fn modinv(a: u64, m: u64) -> u64 {
     1
 }
 
+pub fn genkey() -> (u64,u64) {
+    let p: u64 = primegen();
+    let mut q: u64 = primegen();
+    let e: u64 = 65537;
+
+    while e >= lcm(p-1,q-1) && gcd(e, lcm(p-1,q-1)) != 1 {
+        q = primegen();
+    }
+    (p,q)
+}
+
+pub fn encrypt(msg: u64) -> u64 {
+    let key: (u64,u64) = genkey();
+    let pubkey: u64 = key.0*key.1;
+    println!("Your private key is: p = {}, q = {}\nDo not share or lose these; they're vital to decrypting your message\n\nYour public key is: {}",key.0,key.1,pubkey);
+    let encryptmsg: u64 = modexp(msg,65537,pubkey);
+    println!("Your encrypted message is: {}", encryptmsg);
+    encryptmsg
+}
+
 ///Series of tests that check the modexp function
 #[cfg(test)]
 mod modexp_tests {
@@ -113,4 +133,13 @@ mod modexp_tests {
     fn badexp() {
         modexp(2, 20, 0);
     }
+}
+
+#[test]
+fn test_modinverse() {
+    const BIGM: u64 = u64::max_value() - 58;
+    let m0 = 0xffff_ffff_ffff_f000;
+    let mi = modinv(m0, BIGM);
+    let m = modinv(mi, BIGM);
+    assert_eq!(m0, m);
 }

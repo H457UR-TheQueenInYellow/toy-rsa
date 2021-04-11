@@ -1,7 +1,8 @@
 extern crate rand;
+use std::convert::TryFrom;
 
 ///modexp takes three u64 values, x, y, and m, then recursively determines the resulting exponentiation of x and y, mod m. Errors if m is zero
-pub fn modexp(x: u64, y: u64, m: u64) -> u64 {
+fn modexp(x: u64, y: u64, m: u64) -> u64 {
     if m == 0 {
         error("modexp: error: m cannot be zero");
     } else if x == 0 {
@@ -10,17 +11,18 @@ pub fn modexp(x: u64, y: u64, m: u64) -> u64 {
         return 1;
     }
 
-    let mut z: u64 = modexp(x, y / 2, m);
+    let mut z: u128 = u128::from(modexp(x, y / 2, m));
 
-    z = (z * z) % m;
+    z = (z * z) % u128::from(m);
     if y % 2 == 1 {
-        z = (z * x) % m;
+        z = (z * u128::from(x)) % u128::from(m);
     }
-    z
+
+    u64::try_from(z).unwrap()
 }
 
 ///Upon finding an error, this function is called to display a (provided) custom message to the user, then cleanly exit the program. During tests, it instead panics following the message.
-pub fn error(msg: &str) -> ! {
+fn error(msg: &str) -> ! {
     eprintln!("{:?}", msg);
     #[cfg(test)]
     panic!("error");
@@ -29,7 +31,7 @@ pub fn error(msg: &str) -> ! {
 }
 
 ///Primegen generates random integers between 2^30 and 2^32 (this is a ***toy*** implementation) until it generates one that the primality function confirms to be prime.
-pub fn primegen() -> u64 {
+fn primegen() -> u64 {
     use rand::Rng;
 
     let mut rng = rand::thread_rng();
@@ -44,7 +46,7 @@ pub fn primegen() -> u64 {
 }
 
 ///This is the rust implementation of the C# code found at https://en.wikipedia.org/wiki/Primality_test
-pub fn primality(num: u64) -> bool {
+fn primality(num: u64) -> bool {
     if num == 2 || num == 3 {
         return true;
     } else if num <= 1 || num % 2 == 0 || num % 3 == 0 {
@@ -63,7 +65,7 @@ pub fn primality(num: u64) -> bool {
 }
 
 ///Finds the greatest common denominator of x and y
-pub fn gcd(x: u64, mut y: u64) -> u64 {
+fn gcd(x: u64, mut y: u64) -> u64 {
     while y != 0 {
         if y < x {
             return gcd(y, x);
@@ -74,12 +76,12 @@ pub fn gcd(x: u64, mut y: u64) -> u64 {
 }
 
 ///Finds least common multiple of the given x and y; utilizes gcd function
-pub fn lcm(x: u64, y: u64) -> u64 {
+fn lcm(x: u64, y: u64) -> u64 {
     (x * y) / gcd(x, y)
 }
 
 ///This function finds the modular inverse, if one exists, of two input u64s; presented to you through the power of ~~deep mathematical understanding~~ borrowing code from the C# section of www.geeksforgeeks.org/multiplicative-inverse-under-modulo-m/
-pub fn modinv(a: u64, m: u64) -> u64 {
+/*pub fn modinv(a: u64, m: u64) -> u64 {
     let mut x: u64 = 1;
 
     while x < m {
@@ -89,26 +91,70 @@ pub fn modinv(a: u64, m: u64) -> u64 {
         x += 1;
     }
     1
+}*/
+
+///This is the modular multiplicative inverse function. I did not write this. My grasp of advanced maths is not (currently) that strong; rather, I borrowed it from Professor Bart Massey's toy-rsa library (library found here: https://github.com/pdx-cs-rust/toy-rsa-lib/blob/master/src/lib.rs, rustdoc found here: https://pdx-cs-rust.github.io/toy-rsa-lib/toy_rsa_lib/index.html)
+#[allow(clippy::many_single_char_names)]
+pub fn modinv(a: u64, m: u64) -> u64 {
+    let mut a = a as i128;
+    let mut m = m as i128;
+    let m0 = m;
+    let mut y = 0;
+    let mut x = 1;
+    if m == 1 {
+        return 0;
+    }
+
+    while a > 1 {
+        // q is quotient.
+        let q = a / m;
+        let mut t = m;
+
+        // m is remainder now; process same as
+        // Euclid's Algorithm.
+        m = a % m;
+        a = t;
+        t = y;
+
+        // Update y and x.
+        y = x - q * y;
+        x = t;
+    }
+
+    // Make x positive.
+    if x < 0 {
+        x += m0;
+    }
+
+    // XXX This conversion should never fail, as `x` should
+    // always be positive and less than `m` at this point.
+    u64::try_from(x).unwrap()
 }
 
-pub fn genkey() -> (u64,u64) {
+pub fn genkey() -> (u64, u64) {
     let p: u64 = primegen();
     let mut q: u64 = primegen();
     let e: u64 = 65537;
 
-    while e >= lcm(p-1,q-1) && gcd(e, lcm(p-1,q-1)) != 1 {
+    while e >= lcm(p - 1, q - 1) && gcd(e, lcm(p - 1, q - 1)) != 1 {
         q = primegen();
     }
-    (p,q)
+    (p, q)
 }
 
-pub fn encrypt(msg: u64) -> u64 {
-    let key: (u64,u64) = genkey();
-    let pubkey: u64 = key.0*key.1;
+pub fn encrypt(msg: u64) -> (u64,u64,u64) {
+    let key: (u64, u64) = genkey();
+    let pubkey: u64 = key.0 * key.1;
     println!("Your private key is: p = {}, q = {}\nDo not share or lose these; they're vital to decrypting your message\n\nYour public key is: {}",key.0,key.1,pubkey);
-    let encryptmsg: u64 = modexp(msg,65537,pubkey);
-    println!("Your encrypted message is: {}", encryptmsg);
-    encryptmsg
+    let encryptmsg: u64 = modexp(msg, 65537, pubkey);
+    //println!("Your encrypted message is: {}", encryptmsg);
+    (key.0,key.1,encryptmsg)
+}
+
+pub fn decrypt(p: u64, q: u64, msg: u64) -> u64 {
+    let d = modinv(65537,lcm(p-1,q-1));
+    let dcrpt: u128 = msg.u64::pow(d) % (p*q);
+    dcrpt
 }
 
 ///Series of tests that check the modexp function

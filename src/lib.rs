@@ -153,8 +153,7 @@ pub fn encrypt(msg: u64) -> (u64,u64,u64) {
 
 pub fn decrypt(p: u64, q: u64, msg: u64) -> u64 {
     let d = modinv(65537,lcm(p-1,q-1));
-    let dcrpt: u128 = msg.u64::pow(d) % (p*q);
-    dcrpt
+    modexp(msg, d, p*q)
 }
 
 ///Series of tests that check the modexp function
